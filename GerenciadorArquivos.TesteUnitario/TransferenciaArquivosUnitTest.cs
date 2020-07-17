@@ -13,7 +13,7 @@ namespace GerenciadorArquivos.TesteUnitario
             string server = string.Empty;
             string user = string.Empty;
             string password = string.Empty;
-            TransferenciaArquivos.Enviar(server, user, password);
+            new TransferenciaArquivos(server, user, password).Enviar();
         }
     }
 }
