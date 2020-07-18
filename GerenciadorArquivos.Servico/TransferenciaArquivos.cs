@@ -1,5 +1,4 @@
-﻿using System;
-using WinSCP;
+﻿using WinSCP;
 
 namespace GerenciadorArquivos.Servico
 {
@@ -7,35 +6,35 @@ namespace GerenciadorArquivos.Servico
     {
         private TransferenciaArquivos() { }
 
-        public TransferenciaArquivos(string Parm_Destination, string Parm_User, string Parm_PWord)
+        public TransferenciaArquivos(string host, string user, string password, bool geralog)
         {
-            base.Parm_Destination = Parm_Destination;
-            base.Parm_User = Parm_User;
-            base.Parm_PWord = Parm_PWord;
+            base.Host = host;
+            base.User = user;
+            base.Password = password;
+            base.GeraLog = geralog;
         }
 
-        public void Enviar()
+        public void Sincronizar(string local, string remoto)
         {
-            var sessionOptions = GetSessionOptions();
-
-            using (var session = new Session())
+            base.padrao = new[] { "*" };
+            using (var session = GetNewSession())
             {
-                // Connect
-                session.SessionLogPath = @"c:\testeftp\WinSCP_Send_File.log";
-                session.Open(sessionOptions);
-                // Upload files
-                var transferOptions = new TransferOptions
-                {
-                    TransferMode = TransferMode.Binary
-                };
-                // local   SFTP site
-                var transferResult = session.PutFiles(@"c:\testeftp\teste.txt", "/FTP-extranet/solicitacao.v2/img/", false, transferOptions);
-                //var transferResult = session.GetFiles( "/FTP-extranet/solicitacao.v2/img", @"c:\testeftp\", false, transferOptions);
-                // Throw on any error
-                // Print results
+                var transferResult = session.SynchronizeDirectories(SynchronizationMode.Remote, local, remoto, true, options: TransferOptions);
                 transferResult.Check();
-                foreach (TransferEventArgs transfer in transferResult.Transfers)
-                    Console.WriteLine("Upload of {0} succeeded", transfer.FileName);
+            }
+        }
+
+        public void Copiar(string local, string remoto, string[] arquivos)
+        {
+            base.padrao = arquivos;
+            using (var session = GetNewSession())
+            {
+                // var transferResult = session.PutFiles(local, remoto, options: TransferOptions);
+                foreach (var arquivo in arquivos)
+                {
+                    var transferResult = session.PutFiles($"{local}{arquivo}", $"{remoto}{arquivo.Replace(@"\", "/")}");
+                    transferResult.Check();
+                }
             }
         }
     }
