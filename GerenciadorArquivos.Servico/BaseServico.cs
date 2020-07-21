@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
+using System.Text;
 using WinSCP;
 
 namespace GerenciadorArquivos.Servico
@@ -26,6 +28,7 @@ namespace GerenciadorArquivos.Servico
         protected string User { get; set; }
         protected string Host { get; set; }
         protected bool GeraLog { get; set; }
+        public List<string> Resultado { get; set; }
 
         protected SessionOptions GetSessionOptions()
         {
