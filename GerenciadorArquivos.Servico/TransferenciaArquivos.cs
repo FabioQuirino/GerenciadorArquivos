@@ -16,27 +16,28 @@ namespace GerenciadorArquivos.Servico
             base.Host = host;
             base.User = user;
             base.Password = password;
-            base.GeraLog = geralog;
+            base.GeraLogFtp = geralog;
             base.Resultado = new List<string>();
+            base.GeraBackup = true;
         }
 
-        public void CopiarTudo(string local, string remoto)
+        public void CopiarTudo(string aplicacao, string local, string remoto)
         {
-            var arquivos = new DirectoryInfo(local).GetFiles("*", SearchOption.AllDirectories).Select(x => x.FullName.Replace(local, "")).ToArray();
-            Copiar(local, remoto, arquivos);
+            var arquivos = ListarLocal(aplicacao, local);
+            Copiar(aplicacao, local, remoto, arquivos);
         }
 
-        public void Copiar(string local, string remoto, string[] arquivos)
+        public void Copiar(string aplicacao, string local, string remoto, string[] arquivos)
         {
             using (var session = GetNewSession())
             {
-                Backup(session, local, remoto, arquivos);
+                Backup(session, aplicacao, local, remoto, arquivos);
                 Resultado.Add("Cópia dos arquivos");
 
                 foreach (var arquivo in arquivos)
                 {
-                    var arquivoLocal = $"{local}{arquivo}";
-                    var arquivoRemoto = $"{remoto}{arquivo.Replace(@"\", "/")}";
+                    var arquivoLocal = $@"{local}\{aplicacao}\{arquivo}";
+                    var arquivoRemoto = $@"{remoto}/{aplicacao}/{arquivo.Replace(@"\", "/")}";
 
                     try
                     {
@@ -54,8 +55,22 @@ namespace GerenciadorArquivos.Servico
             }
         }
 
-        private void Backup(Session sessionFtp, string local, string remoto, string[] arquivos)
+        public static string[] ListarLocal(string aplicacao, string local)
         {
+            var itens = new DirectoryInfo($@"{local}\{aplicacao}\")
+                .GetFiles("*", SearchOption.AllDirectories)
+                .Select(x => x.FullName).ToArray();
+            itens = itens.Select(x => x.Replace($@"{local}\{aplicacao}\", "")).ToArray();
+            return itens;
+        }
+
+        private void Backup(Session sessionFtp, string aplicacao, string local, string remoto, string[] arquivos)
+        {
+            if (!GeraBackup)
+            {
+                return;
+            }
+
             Resultado.Add($"Processamento do backup ------------------ ");
             var dataHoraAtual = DateTime.Now.ToString("yyyyMMddHHmmss");
             var diretorioBackup = $"backup-{dataHoraAtual}";
@@ -65,8 +80,8 @@ namespace GerenciadorArquivos.Servico
 
             foreach (var arquivo in arquivos)
             {
-                var arquivoRemoto = $@"{remoto}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
-                var arquivoRemotoBackup = $@"{remoto}\{diretorioBackup}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
+                var arquivoRemoto = $@"{remoto}\{aplicacao}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
+                var arquivoRemotoBackup = $@"{remoto}/{aplicacao}/{diretorioBackup}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
                 var remotoSemArquivo = arquivoRemotoBackup.Replace(arquivoRemotoBackup.Split('/').Last(), "");
 
                 try
@@ -85,13 +100,13 @@ namespace GerenciadorArquivos.Servico
                 }
             }
 
-            var result = sessionFtp.SynchronizeDirectories(SynchronizationMode.Local, diretorioTemporario, $@"{remoto}/{diretorioBackup}\", false);
+            var result = sessionFtp.SynchronizeDirectories(SynchronizationMode.Local, diretorioTemporario, $@"{remoto}/{aplicacao}/{diretorioBackup}\", false);
             result.Check();
 
-            var remove = sessionFtp.RemoveFiles($@"{remoto}/{diretorioBackup}\");
+            var remove = sessionFtp.RemoveFiles($@"{remoto}/{aplicacao}/{diretorioBackup}\");
             remove.Check();
-
-            ZipFile.CreateFromDirectory(diretorioTemporario + @"\", $@"c:\teste\{DateTime.Now:yyyyMMddHHmmss}.zip", CompressionLevel.Optimal, true);
+            ArquivoBkpZip = $@"c:\teste\transf-bkp-{dataHoraAtual}.zip";
+            ZipFile.CreateFromDirectory(diretorioTemporario + @"\", ArquivoBkpZip, CompressionLevel.Optimal, false);
 
             Resultado.Add($"Fim do processamento do backup ------------------ ");
         }

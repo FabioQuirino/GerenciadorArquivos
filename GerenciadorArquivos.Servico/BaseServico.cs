@@ -27,7 +27,10 @@ namespace GerenciadorArquivos.Servico
         protected string Password { get; set; }
         protected string User { get; set; }
         protected string Host { get; set; }
-        protected bool GeraLog { get; set; }
+        public string ArquivoLogFtp { get; set; }
+        public string ArquivoBkpZip { get; set; }
+        protected bool GeraLogFtp { get; set; }
+        public bool GeraBackup { get; set; }
         public List<string> Resultado { get; set; }
 
         protected SessionOptions GetSessionOptions()
@@ -50,9 +53,10 @@ namespace GerenciadorArquivos.Servico
             var sessionOptions = GetSessionOptions();
             var session = new Session();
 
-            if (GeraLog)
+            if (GeraLogFtp)
             {
-                session.SessionLogPath = $@"c:\testeftp\ftp-session-{DateTime.Now:yyyyMMddHHmmss}.log";
+                ArquivoLogFtp = $@"c:\testeftp\ftp-session-{DateTime.Now:yyyyMMddHHmmss}.log";
+                session.SessionLogPath = ArquivoLogFtp;
             }
             session.Open(sessionOptions);
             return session;

@@ -49,6 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BaseServico.cs" />
+    <Compile Include="Tipo\CopiaTipo.cs" />
+    <Compile Include="Tipo\TransferenciaTipo.cs" />
     <Compile Include="TransferenciaArquivos.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
