@@ -21,18 +21,46 @@ namespace GerenciadorArquivos.Servico
             base.GeraBackup = true;
         }
 
-        public void CopiarTudo(string aplicacao, string local, string remoto)
+        public void CopiarTudo(string aplicacao, string local, string remoto, string[] excecoes)
         {
             var arquivos = ListarLocal(aplicacao, local);
-            Copiar(aplicacao, local, remoto, arquivos);
+            Copiar(aplicacao, local, remoto, arquivos, excecoes);
         }
 
-        public void Copiar(string aplicacao, string local, string remoto, string[] arquivos)
+        public void Copiar(string fromAppdir, string toAppDir, string[] arquivos)
         {
             using (var session = GetNewSession())
             {
-                Backup(session, aplicacao, local, remoto, arquivos);
+                foreach (var arquivo in arquivos)
+                {
+                    var arquivoLocal = $@"{fromAppdir}\{arquivo}";
+                    var arquivoRemoto = $@"{toAppDir}\{arquivo.Replace(@"\", "/")}";
+
+                    try
+                    {
+                        var transferResult = session.PutFiles(arquivoLocal, arquivoRemoto);
+                        transferResult.Check();
+                        Resultado.Add($"OK - de: {arquivoLocal} para: {arquivoRemoto}");
+                    }
+                    catch (Exception e)
+                    {
+                        Resultado.Add($"FALHA - de: {arquivoRemoto} para: {arquivoRemoto}, erro: {e.Message}");
+                    }
+                }
+            }
+        }
+
+        public void Copiar(string aplicacao, string local, string remoto, string[] arquivos, string[] excecoes)
+        {
+            using (var session = GetNewSession())
+            {
+                Backup(session, aplicacao, local, remoto, arquivos, excecoes);
                 Resultado.Add("Cópia dos arquivos");
+
+                if (excecoes != null && excecoes.Any())
+                {
+                    arquivos = arquivos.Where(x => !excecoes.Any(y => y.ToLower().Equals(x.ToLower()))).ToArray();
+                }
 
                 foreach (var arquivo in arquivos)
                 {
@@ -64,7 +92,7 @@ namespace GerenciadorArquivos.Servico
             return itens;
         }
 
-        private void Backup(Session sessionFtp, string aplicacao, string local, string remoto, string[] arquivos)
+        private void Backup(Session sessionFtp, string aplicacao, string local, string remoto, string[] arquivos, string[] excecoes)
         {
             if (!GeraBackup)
             {
@@ -73,15 +101,18 @@ namespace GerenciadorArquivos.Servico
 
             Resultado.Add($"Processamento do backup ------------------ ");
             var dataHoraAtual = DateTime.Now.ToString("yyyyMMddHHmmss");
-            var diretorioBackup = $"backup-{dataHoraAtual}";
 
+            var diretorioBackup = $"{aplicacao}-bkp-{dataHoraAtual}";
             string diretorioTemporario = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(diretorioTemporario);
+            sessionFtp.CreateDirectory($@"{remoto}/{diretorioBackup}");
 
-            foreach (var arquivo in arquivos)
+            foreach (var arquivo in arquivos.Where(x => !excecoes.Any(y => y.ToLower().Equals(x.ToLower()))).ToArray())
             {
                 var arquivoRemoto = $@"{remoto}\{aplicacao}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
-                var arquivoRemotoBackup = $@"{remoto}/{aplicacao}/{diretorioBackup}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
+                var arquivoRemotoBackup = $@"{remoto}/{diretorioBackup}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
+                
+                // var arquivoRemotoBackup = $@"{remoto}/{aplicacao}/{diretorioBackup}\{arquivo}".Replace(@"\", "/").Replace(@"\\", @"\");
                 var remotoSemArquivo = arquivoRemotoBackup.Replace(arquivoRemotoBackup.Split('/').Last(), "");
 
                 try
@@ -99,15 +130,15 @@ namespace GerenciadorArquivos.Servico
                     Resultado.Add($"FALHA - de: {arquivoRemoto} para: {arquivoRemotoBackup}, erro: {e.Message}");
                 }
             }
-
+            /*
             var result = sessionFtp.SynchronizeDirectories(SynchronizationMode.Local, diretorioTemporario, $@"{remoto}/{aplicacao}/{diretorioBackup}\", false);
             result.Check();
 
             var remove = sessionFtp.RemoveFiles($@"{remoto}/{aplicacao}/{diretorioBackup}\");
             remove.Check();
-            ArquivoBkpZip = $@"c:\teste\transf-bkp-{dataHoraAtual}.zip";
+            ArquivoBkpZip = $@"c:\teste\{aplicacao}-{base.Host}-bkp-{dataHoraAtual}.zip";
             ZipFile.CreateFromDirectory(diretorioTemporario + @"\", ArquivoBkpZip, CompressionLevel.Optimal, false);
-
+            */
             Resultado.Add($"Fim do processamento do backup ------------------ ");
         }
     }

@@ -61,5 +61,12 @@ namespace GerenciadorArquivos.Servico
             session.Open(sessionOptions);
             return session;
         }
+
+        protected void SetPermission(string host, string user, string password)
+        {
+            Host = host;
+            User = user;
+            Password = password;
+        }
     }
 }
